@@ -7,32 +7,48 @@ object Main extends App with SimpleRoutingApp {
   implicit val system = ActorSystem("my-system")
 
   startServer(interface = "localhost", port = 8099) {
+    // examples that work
     pathPrefix("green") {
-      pathEnd {
+      path("example1") {
         // parameters directive with single extraction if fine...
         parameters('p1.?){ p1 =>
-          complete { s"called /green with params p1 -> $p1" }
+          complete { s"called /green/example1 with params p1 -> $p1" }
         }
       } ~
       // path directive only containing Segment extraction is fine...
-      path(Segment) { id1 =>
-        complete { s"called /green/$id1" }
+      path("example2" / Segment) { id1 =>
+        complete { s"called /green/example2/$id1" }
       } ~
-      // path directive with tuple extraction starting with extraction is fine...
-      path(Segment / Segment) { (id1, id2) =>
+      // path directive with >1 extracted value starting with an extracted value works...
+      path(Segment / "example3" / Segment) { (id1: String, id2: String) =>
+        complete { s"called /green/$id1/$id2" }
+      }
+      // ...also works when types are explicitly supplied
+      path(Segment / "example4" / Segment) { (id1: String, id2: String) =>
         complete { s"called /green/$id1/$id2" }
       }
     } ~
+    // examples that turn red
     pathPrefix("red") {
-      pathEnd {
+      path("example1") {
         // parameters directive with >1 extracted value turns tuple values red...
         parameters('p1.?, 'p2.?){ (p1, p2) =>
-          complete { s"called /red with params p1 -> $p1, p2 -> $p2" }
+          complete { s"called /red/example1 with params p1 -> $p1, p2 -> $p2" }
+        }
+      } ~
+      path("example2") {
+        // ...and with a different error when types explicitly supplied
+        parameters('p1.?, 'p2.?){ (p1: Option[String], p2: Option[String]) =>
+          complete { s"called /red/example2 with params p1 -> $p1, p2 -> $p2" }
         }
       } ~
       // path directive with >1 extracted value starting with a literal turns the tuple values red...
-      path("firstthis" / Segment / "andthen" / Segment) { (id1, id2) =>
-        complete { s"called /red/firstthis/$id1/andthen/$id2" }
+      path("example3" / Segment / "andthen" / Segment) { (id1, id2) =>
+        complete { s"called /red/example3/$id1/andthen/$id2" }
+      } ~
+      // ...and with a different error when types are explicitly suppled
+      path("example4" / Segment / "andthen" / Segment) { (id1: String, id2: String) =>
+        complete { s"called /red/example4/$id1/andthen/$id2" }
       }
     }
   }
