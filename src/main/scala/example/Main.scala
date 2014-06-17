@@ -1,12 +1,29 @@
 package example
 
-import spray.routing.SimpleRoutingApp
 import akka.actor.ActorSystem
+import scala.util.control.NonFatal
+import spray.httpx.unmarshalling._
+import spray.routing.SimpleRoutingApp
 
 object Main extends App with SimpleRoutingApp {
+
+  implicit val String2SeqString = new FromStringDeserializer[Seq[String]] {
+    def apply(value: String) = {
+      try Right(value.split(",").toSeq)
+      catch { case NonFatal(ex) => Left(MalformedContent(ex.toString, ex)) }
+    }
+  }
+
   implicit val system = ActorSystem("my-system")
 
   startServer(interface = "localhost", port = 8099) {
+    pathPrefix("foo") {
+      path("paramlist") {
+        parameters("states".as[Seq[String]].?) { states =>
+          complete { s"called /foo/paramlist with parameters $states" }
+        }
+      }
+    } ~
     // examples that work
     pathPrefix("green") {
       path("example1") {
